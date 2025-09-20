@@ -16,7 +16,7 @@ This tool is intended for personal use and most installation configurations are 
 ---
 
 ### To-do:
-- [] Add [decman](https://github.com/kiviktnm/decman) declarative Arch config
-- [] Create a NixOS installation script
-- [] Write documentation
-- [] Test tons...
+- [ ] Add [decman](https://github.com/kiviktnm/decman) declarative Arch config
+- [ ] Create a NixOS installation script
+- [ ] Write documentation
+- [ ] Test tons...
