@@ -12,7 +12,7 @@ pacman --noconfirm -Sy reflector arch-install-scripts
 reflector --latest 5 --country Brasil --sort rate --save /etc/pacman.d/mirrorlist
 
 # Install base system
-pacstrap -K /mnt base linux-lts linux-firmware btrfs-progs neovim sudo git base-devel
+pacstrap -K /mnt base linux-lts linux-firmware btrfs-progs neovim sudo git base-devel reflector
 
 # Mount EFI and generate the fstab file
 mount /dev/disk/by-partlabel/HIKSEMI-BOOT /boot --mkdir
@@ -25,43 +25,37 @@ cat "RECOVERY-ARCH" > /mnt/etc/hostname
 cat "KEYMAP=us" > /mnt/etc/vconsole.conf
 cat "LANG=en_US.UTF-8" > /mnt/etc/locale.conf
 cat "en_US.UTF-8 UTF-8" > /mnt/etc/locale.gen
+arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/America/Argentina/Buenos_Aires /etc/localtime"
+arch-chroot /mnt /bin/bash -c "hwclock --systohc && locale-gen"
 
 # Configure root access for wheel
 echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/00-wheel
 chmod 440 /mnt/etc/sudoers.d/00-wheel
 
+# Set root password and main user
+echo "Please set the root password:"
+passwd -R /mnt
+useradd -R /mnt -m -G wheel,audio,video -s /bin/zsh lorem
+echo "Please set the user password:"
+passwd -R /mnt lorem
 
-# Run chrooted commands
-arch-chroot /mnt /bin/bash <<'EOF'
-  ln -sf /usr/share/zoneinfo/America/Argentina/Buenos_Aires /etc/localtime
-  hwclock --systohc
-  locale-gen
+# Set a temporary builder user to build yay
+useradd -R /mnt -s /bin/bash builder
+passwd -R /mnt -d builder
+echo "builder ALL=(ALL) NOPASSWD: ALL" >> /mnt/etc/sudoers.d/builder
+chmod 440 /mnt/etc/sudoers.d/builder
+arch-chroot -u builder /mnt /bin/bash -c "git clone https://aur.archlinux.org/yay-bin.git /tmp/yay && cd /tmp/yay && makepkg --noconfirm -si"
 
-  # Install desktop packages
-  pacman --noconfirm -S plasma kitty sddm pipewire wireplumber
+# Install desktop environment
+arch-chroot -u builder /mnt /bin/bash -c "yay --noconfirm -S plasma kitty sddm pipewire wireplumber zen-browser-bin"
 
-  systemctl enable sddm.service
+# Enable systemd services
+arch-chroot /mnt /bin/bash -c "ln /etc/systemd/system/display-manager.service /usr/lib/systemd/system/sddm.service"
+arch-chroot /mnt /bin/bash -c "ln /etc/systemd/system/timers.target.wants/reflector.timer /usr/lib/systemd/system/reflector.timer"
 
-  # ---------------------------------- #
-  #     NEED TO FIX FROM HERE DOWN     #
-  # ---------------------------------- #
-  
-  systemctl enable reflector.timer
+# Clean the builder user
+rm /mnt/etc/sudoers.d/builder
+userdel -R /mnt builder
 
-  echo "Please set the root password:"
-  passwd
-
-  useradd -m -G wheel,audio,video -s /bin/zsh lorem
-
-  # yay installation
-  su lorem
-  git clone https://aur.archlinux.org/yay-bin.git /tmp/yay
-  cd /tmp/yay
-  makepkg -si
-  exit
-
-  echo "Please set the user password:"
-  passwd lorem
-
-  yay --noconfirm zen-browser-bin
-EOF
+# Unmount the new system
+umount -q --recursive /mnt

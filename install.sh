@@ -12,7 +12,7 @@ ensure_deps() {
 
     # Create a tmpfs where to bootstrap a small arch installation
     umount -q --recursive /tmp/arch-bootstrap
-    mount -t tmpfs -o size=10G tmpfs /tmp/arch-bootstrap --mkdir
+    mount -t tmpfs -o size=5G tmpfs /tmp/arch-bootstrap --mkdir
 
     # Install arch into the tmpfs
     sh /tmp/bin/arch-bootstrap/arch-bootstrap.sh /tmp/arch-bootstrap
@@ -65,6 +65,11 @@ if [ "$current_distro" = "NixOS" ]; then
   touch /tmp/arch-bootstrap/arch.sh
   mount --bind ./arch.sh /tmp/arch-bootstrap/arch.sh
   arch-chroot /tmp/arch-bootstrap /bin/bash "/arch.sh"
+
+  # After installation, unmount the arch bootstrap
+  umount -q --recursive /tmp/arch-bootstrap
+
+  # Then install NixOS
 
 fi
 
