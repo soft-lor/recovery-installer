@@ -3,10 +3,10 @@
 # Format the partitions
 format_partitions() {
 
-  mkfs.fat -F 32 /dev/disk/by-label/HIKSEMI-BOOT
+  mkfs.fat -F 32 /dev/disk/by-partlabel/HIKSEMI-BOOT
 
-  mkfs.btrfs /dev/disk/by-label/HIKSEMI
-  mount /dev/disk/by-label/HIKSEMI /tmp/mnt --mkdir
+  mkfs.btrfs -f /dev/disk/by-partlabel/HIKSEMI
+  mount /dev/disk/by-partlabel/HIKSEMI /tmp/mnt --mkdir
   btrfs subvolume create /tmp/mnt/@ARCH
   btrfs subvolume create /tmp/mnt/@NIXOS
   btrfs subvolume create /tmp/mnt/@log
@@ -16,7 +16,7 @@ format_partitions() {
 
 # Needs the disk to be partitioned as $1
 partition_disk() {
-
+  
   # Create the partition table
   parted --script $1 mklabel gpt
 
@@ -65,5 +65,8 @@ select_disk() {
       esac
     done
 
-    echo "$target"
+  partition_disk "$target"
 }
+
+select_disk
+format_partitions
